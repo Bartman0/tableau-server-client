@@ -24,7 +24,7 @@ def main():
     args = parser.parse_args()
 
     if args.p is None:
-        password = getpass.getpass("Password: ")
+        password = getpass.getpass("password: ")
     else:
         password = args.p
 
@@ -52,10 +52,10 @@ def main():
             if filtered_projects:
                 project = filtered_projects.pop()
             else:
-                error = "No project named '{}' found".format(filter_project_name)
+                error = "no project named '{}' found".format(filter_project_name)
                 print(error)
 
-            #server.projects.populate_permissions(project)
+            server.projects.populate_permissions(project)
             print("{0}: {1}".format(project.name, project.content_permissions))
             print("==================================================")
 
@@ -72,14 +72,14 @@ def main():
                 print("--------------------------------------------------")
             print("==================================================")
 
-            # for c in project.permissions.grantee_capabilities:
-            #     #print("{0}: {1}, {2}".format(c.grantee_id, c.grantee_type, c.capabilities))
-            #     if c.grantee_type == 'group':
-            #         group = [g for g in groups if g.id == c.grantee_id].pop()
-            #         print("{0}: {1}".format(group.name, c.capabilities))
-            #     if c.grantee_type == 'user':
-            #         print("{0}: {1}".format(users[c.grantee_id].name, c.capabilities))
-            # print("==================================================")
+            for c in project.permissions.grantee_capabilities:
+                #print("{0}: {1}, {2}".format(c.grantee_id, c.grantee_type, c.capabilities))
+                if c.grantee_type == 'group':
+                    group = [g for g in groups if g.id == c.grantee_id].pop()
+                    print("{0}: {1}".format(group.name, c.capabilities))
+                if c.grantee_type == 'user':
+                    print("{0}: {1}".format(users[c.grantee_id].name, c.capabilities))
+            print("==================================================")
 
 
 if __name__ == '__main__':

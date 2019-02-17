@@ -15,6 +15,8 @@ class UserItem(object):
         Viewer = 'Viewer'
         ViewerWithPublish = 'ViewerWithPublish'
         Guest = 'Guest'
+        SiteAdministratorExplorer = 'SiteAdministratorExplorer'
+        ExplorerCanPublish = 'ExplorerCanPublish'
 
     class Auth:
         SAML = 'SAML'

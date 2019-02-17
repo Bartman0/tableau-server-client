@@ -63,19 +63,29 @@ class DatasourceRequest(object):
         xml_request = ET.Element('tsRequest')
         datasource_element = ET.SubElement(xml_request, 'datasource')
         datasource_element.attrib['name'] = datasource_item.name
-        project_element = ET.SubElement(datasource_element, 'project')
-        project_element.attrib['id'] = datasource_item.project_id
 
         if connection_credentials is not None and connections is not None:
             raise RuntimeError('You cannot set both `connections` and `connection_credentials`')
 
-        if connection_credentials is not None:
-            _add_credentials_element(datasource_element, connection_credentials)
+        if connection_credentials:
+            credentials_element = ET.SubElement(datasource_element, 'connectionCredentials')
+            credentials_element.attrib['name'] = connection_credentials.name
+            credentials_element.attrib['password'] = connection_credentials.password
+            credentials_element.attrib['embed'] = 'true' if connection_credentials.embed else 'false'
 
-        if connections is not None:
-            connections_element = ET.SubElement(datasource_element, 'connections')
-            for connection in connections:
-                _add_connections_element(connections_element, connection)
+            if connection_credentials.oauth:
+                credentials_element.attrib['oAuth'] = 'true'
+
+        project_element = ET.SubElement(datasource_element, 'project')
+        project_element.attrib['id'] = datasource_item.project_id
+
+        # if connection_credentials is not None:
+        #     _add_credentials_element(datasource_element, connection_credentials)
+
+        # if connections is not None:
+        #     connections_element = ET.SubElement(datasource_element, 'connections')
+        #     for connection in connections:
+        #         _add_connections_element(connections_element, connection)
         return ET.tostring(xml_request)
 
     def update_req(self, datasource_item):

@@ -72,9 +72,10 @@ class RequestOptions(RequestOptionsBase):
         return "{0}?{1}".format(url, '&'.join(params))
 
 
-class _FilterOptionsBase(RequestOptionsBase):
+class _FilterOptionsBase(RequestOptions):
     """ Provide a basic implementation of adding view filters to the url """
     def __init__(self):
+        super(_FilterOptionsBase, self).__init__()
         self.view_filters = []
 
     def apply_query_params(self, url):
@@ -150,4 +151,21 @@ class PDFRequestOptions(_FilterOptionsBase):
 
         self._append_view_filters(params)
 
+        return "{0}?{1}".format(url, '&'.join(params))
+
+
+class UserRequestOptions(_FilterOptionsBase):
+    class Details:
+        All = "_all_"
+        Default = "_default_"
+
+    def __init__(self, details=None):
+        super(UserRequestOptions, self).__init__()
+        self.details = details
+
+    def apply_query_params(self, url):
+        params = []
+        if self.details:
+            params.append('fields={0}'.format(self.details))
+        self._append_view_filters(params)
         return "{0}?{1}".format(url, '&'.join(params))
