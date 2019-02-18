@@ -41,22 +41,27 @@ def main():
         print("source: {0}[{1}]".format(server.baseurl, source.name))
         print("destination: {0}[{1}]".format(dest.baseurl, target.name))
 
-        # Step 4: If project is found, form a new workbook item and publish.
+        # Step 4: If project is found, build lookup tables.
         if source is not None and target is not None:
             # Step 3: Build a list of datasources.
             ds_source = extract_ds(server, source)
             ds_target = extract_ds(dest, target)
+            dbnames_from_to = map_content_url_from_to(ds_source, ds_target)
             # Step 4: Form a new workbook item and publish.
             for wb in args.workbook:
                 pub = Workbook(wb)
                 for ds in pub.datasources:
                     print("{0}, {1}".format(ds.caption, ds.name))
                     if len(ds.connections) == 1:
-                        ds.connections[0].dbname = datasources[ds.name].content_url
+                        try:
+                            if ds.name in ds_target:
+                                ds.connections[0] = ds_target[ds.name].connections[0]
+                            else:
+                                ds.connections[0].dbname = dbnames_from_to[ds.connections[0].dbname]
+                        except LookupError as e:
+                            raise LookupError("lookup information between target and source is inconsistent, datasource caption: {0}, connection: {1}".format(ds.caption, ds.connections[0].dbname))
                 new_workbook = TSC.WorkbookItem(project.id)
-                new_workbook = server.workbooks.publish(new_workbook,
-                                                        wb,
-                                                        overwrite_true)
+                new_workbook = server.workbooks.publish(new_workbook, wb, overwrite_true)
                 print("workbook published ID: {0}".format(new_workbook.id))
 
 
@@ -66,7 +71,6 @@ def extract_ds(server, project):
         if ds.project_name == project.name:
             server.datasources.populate_connections(ds)
             datasources[ds.name] = ds
-            print("{0}, {1}".format(ds.name, ds.name))
     return datasources
 
 
@@ -87,9 +91,16 @@ def filter_project(filter_project_name, server):
         project = filtered_projects.pop()
         return project
     else:
-        error = "no project named '{0}' found".format(filter_project_name)
-        raise LookupError(error)
+        raise LookupError("no project named '{0}' found".format(filter_project_name))
     return None
+
+
+def map_content_url_from_to(ds_source, ds_target):
+    map = {}
+    for t, ds in ds_target.items():
+        if ds.name in ds_source:
+            map[ds_source[ds.name].content_url] = ds.content_url
+    return map
 
 
 if __name__ == '__main__':
