@@ -1,9 +1,11 @@
 import argparse
-import getpass
 import logging
+import os
+import re
+
+from tableaudocumentapi import Workbook
 
 import tableauserverclient as TSC
-from tableaudocumentapi import Workbook
 
 
 def main():
@@ -16,6 +18,7 @@ def main():
     parser.add_argument('-P', required=True, help='password for the user on the destination server')
     parser.add_argument('--source', '-S', default=None)
     parser.add_argument('--target', '-T', default=None)
+    parser.add_argument('--directory', '-d', default='migrated')
     parser.add_argument('--logging-level', '-l', choices=['debug', 'info', 'error'], default='error',
                         help='desired logging level (set to error by default)')
 
@@ -33,13 +36,15 @@ def main():
 
     overwrite_true = TSC.Server.PublishMode.Overwrite
 
+    os.makedirs(args.directory, exist_ok=True)
+
     with server.auth.sign_in(server_auth) and dest.auth.sign_in(dest_auth):
 
         # Step 2: Get the project on server.
         source = filter_project(args.source, server)
         target = filter_project(args.target, dest)
-        print("source: {0}[{1}]".format(server.baseurl, source.name))
-        print("destination: {0}[{1}]".format(dest.baseurl, target.name))
+        print("source: {0} [{1}]".format(server.baseurl, source.name))
+        print("destination: {0} [{1}]".format(dest.baseurl, target.name))
 
         # Step 4: If project is found, build lookup tables.
         if source is not None and target is not None:
@@ -51,17 +56,29 @@ def main():
             for wb in args.workbook:
                 pub = Workbook(wb)
                 for ds in pub.datasources:
-                    print("{0}, {1}".format(ds.caption, ds.name))
-                    if len(ds.connections) == 1:
+                    value = ''
+                    if len(ds.connections) == 1 and ds.connections[0].dbclass == 'sqlproxy':
                         try:
-                            if ds.name in ds_target:
-                                ds.connections[0] = ds_target[ds.name].connections[0]
+                            if len(ds.caption) == 0 and ds.name in ds_target:
+                                value = ds.name
+                                ds.connections[0] = ds_target[value].connections[0]
+                            elif ds.connections[0].dbname in dbnames_from_to:
+                                value = dbnames_from_to[ds.connections[0].dbname]
+                                ds.connections[0].dbname = value
                             else:
-                                ds.connections[0].dbname = dbnames_from_to[ds.connections[0].dbname]
+                                value = clean_name(ds.caption)
+                                ds.connections[0] = ds_target[value].connections[0]
                         except LookupError as e:
                             raise LookupError("lookup information between target and source is inconsistent, datasource caption: {0}, connection: {1}".format(ds.caption, ds.connections[0].dbname))
-                new_workbook = TSC.WorkbookItem(project.id)
-                new_workbook = server.workbooks.publish(new_workbook, wb, overwrite_true)
+                    print("{0}, {1} --> {2}".format(ds.caption, ds.name, value))
+                wb_migrated = os.path.join(args.directory, wb)
+                pub.save_as(wb_migrated)
+                new_workbook = TSC.WorkbookItem(target.id)
+                try:
+                    new_workbook = dest.workbooks.publish(new_workbook, wb_migrated, overwrite_true)
+                except TSC.server.endpoint.exceptions.ServerResponseError:
+                    dest.version = '2.4'
+                    new_workbook = dest.workbooks.publish(new_workbook, wb_migrated, overwrite_true)
                 print("workbook published ID: {0}".format(new_workbook.id))
 
 
@@ -78,15 +95,17 @@ def connect(host, username, password):
     server_auth = TSC.TableauAuth(username, password)
     server = TSC.Server(host)
     server.use_server_version()
+    # server.version = '2.4'
     return server, server_auth
 
 
 def filter_project(filter_project_name, server):
     options = TSC.RequestOptions()
-    options.filter.add(TSC.Filter(TSC.RequestOptions.Field.Name,
-                                  TSC.RequestOptions.Operator.Equals,
-                                  filter_project_name))
-    filtered_projects, _ = server.projects.get(req_options=options)
+    # options.filter.add(TSC.Filter(TSC.RequestOptions.Field.Name,
+    #                               TSC.RequestOptions.Operator.Equals,
+    #                               filter_project_name))
+    # filtered_projects, _ = server.projects.get(req_options=options)
+    filtered_projects = [ p for p in server.projects.get()[0] if p.name == filter_project_name ]
     if filtered_projects:
         project = filtered_projects.pop()
         return project
@@ -101,6 +120,11 @@ def map_content_url_from_to(ds_source, ds_target):
         if ds.name in ds_source:
             map[ds_source[ds.name].content_url] = ds.content_url
     return map
+
+
+def clean_name(name):
+    v = re.sub(r' \([^\(\)]*\)$', '', name)
+    return v
 
 
 if __name__ == '__main__':

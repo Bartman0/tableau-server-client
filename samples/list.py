@@ -45,7 +45,7 @@ def main():
         }.get(args.resource_type)
 
         for resource in TSC.Pager(endpoint.get):
-            print(resource.id, resource.name)
+            print(resource.id, resource.name, resource.content_url)
 
 
 if __name__ == '__main__':
