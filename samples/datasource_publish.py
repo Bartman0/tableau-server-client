@@ -63,7 +63,12 @@ def main():
             creds = ConnectionCredentials(args.login, args.P, embed=True)
             new_ds = TSC.DatasourceItem(project.id)
             new_ds.name = filename_short
-            new_ds = server.datasources.publish(new_ds, new_ds_name, mode = overwrite_true, connection_credentials=creds)
+            try:
+                new_ds = server.datasources.publish(new_ds, new_ds_name, mode = overwrite_true, connection_credentials=creds)
+            except TSC.server.endpoint.exceptions.ServerResponseError:
+                server.version = '2.4'
+                new_ds = server.datasources.publish(new_ds, new_ds_name, mode = overwrite_true, connection_credentials=creds)
+            print("data source published ID: {0}".format(new_ds.id))
 
 
 if __name__ == '__main__':
