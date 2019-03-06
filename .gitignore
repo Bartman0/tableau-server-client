@@ -148,3 +148,9 @@ $RECYCLE.BIN/
 docs/_site/
 docs/.jekyll-metadata
 docs/Gemfile.lock
+
+# Tableau
+*.tds
+*.tdsx
+*.twb
+*.twbx
