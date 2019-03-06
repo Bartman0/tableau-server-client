@@ -11,7 +11,7 @@ def main():
     parser = argparse.ArgumentParser(description='Publish datasource to server')
     parser.add_argument('--host', '-H', required=True, help='database host')
     parser.add_argument('--port', required=True, help='database port')
-    parser.add_argument('--database', '-d', required=True, help='database name')
+    parser.add_argument('--database', '-D', required=True, help='database name')
     parser.add_argument('--login', '-L', required=True, help='login to sign into database')
     parser.add_argument('-P', required=True, help='password to sign into database')
     parser.add_argument('--server', '-s', help='server to publish to')
@@ -19,6 +19,7 @@ def main():
     parser.add_argument('--project', default=None)
     parser.add_argument('--username', '-u', help='username to sign into server')
     parser.add_argument('-p', '--password', default=None)
+    parser.add_argument('--directory', '-d', default='migrated')
 
     parser.add_argument('--logging-level', '-l', choices=['debug', 'info', 'error'], default='error',
                         help='desired logging level (set to error by default)')
@@ -59,6 +60,7 @@ def main():
             filename_short = os.path.splitext(filename)[0]
             file_extension = os.path.splitext(filename)[1][1:]
             new_ds_name = "{0}_{1}.{2}".format(filename_short, args.database, file_extension)
+            new_ds_name = os.path.join(args.directory, new_ds_name)
             tds.save_as(new_ds_name)
             creds = ConnectionCredentials(args.login, args.P, embed=True)
             new_ds = TSC.DatasourceItem(project.id)
